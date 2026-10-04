@@ -1,0 +1,14 @@
+{
+  "input_rows": 5124,
+  "output_rows": 4919,
+  "removed_rows": 1,
+  "duplicate_rows_removed": 204,
+  "column_repairs": 0,
+  "header_rows_removed": 1,
+  "unique_arabic": 4164,
+  "unique_arabic_normalized": 3812,
+  "unique_arabic_malayalam_pairs": 4824,
+  "phrases": 1338,
+  "suspicious_unicode_rows": 0,
+  "suspicious_translation_rows": 0
+}

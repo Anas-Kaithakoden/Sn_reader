@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-D6GBPR9CV0"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-D6GBPR9CV0');
+</script>
+  <title>Home - Dictionary</title>
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="https://i.ibb.co/tTPY6dm1/image.png" />
+
+  <!-- Google Fonts for Premium Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: linear-gradient(rgba(10, 15, 29, 0.65), rgba(10, 15, 29, 0.85)), 
+                  url("https://i.ibb.co/yc08crzH/20250923-0635-Starry-Arabic-Skies-simple-compose-01k5t1nc7kf4y8jv4ma4ctgmwe.png") no-repeat center center fixed;
+      background-size: cover;
+      color: #fff;
+      text-align: center;
+      padding: 2.5rem 1.5rem;
+    }
+
+    /* Container for central card alignment */
+    .main-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 420px;
+      margin: auto 0;
+    }
+
+    header {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 2rem;
+    }
+
+    img.logo {
+      width: 130px;
+      height: auto;
+      filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.4));
+      transition: transform 0.4s ease;
+    }
+
+    img.logo:hover {
+      transform: translateY(-3px) scale(1.02);
+    }
+
+    h1 {
+      margin-top: 1.25rem;
+      font-size: 2.2rem;
+      font-weight: 700;
+      letter-spacing: 3px;
+      font-family: 'Cinzel', serif;
+      background: linear-gradient(135deg, #ffffff 0%, #d4af37 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      text-shadow: 0 10px 20px rgba(0,0,0,0.3);
+    }
+
+    nav {
+      display: flex;
+      flex-direction: column;
+      gap: 1.1rem;
+      width: 100%;
+      padding: 2.2rem 1.8rem;
+      /* Glassmorphism Effect */
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 24px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    }
+
+    .nav-btn {
+      position: relative;
+      background: linear-gradient(135deg, #d4af37 0%, #aa7c11 100%);
+      color: #0d131f;
+      border: none;
+      border-radius: 14px;
+      padding: 0.95rem 1.5rem;
+      font-size: 1.05rem;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      cursor: pointer;
+      box-shadow: 0 6px 16px rgba(212, 175, 55, 0.25);
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      overflow: hidden;
+    }
+
+    .nav-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+      transition: left 0.6s ease;
+    }
+
+    .nav-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 24px rgba(212, 175, 55, 0.4);
+      background: linear-gradient(135deg, #e5be48 0%, #b88816 100%);
+    }
+
+    .nav-btn:hover::before {
+      left: 100%;
+    }
+
+    .nav-btn:active {
+      transform: translateY(0);
+      box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+    }
+
+    /* Secondary style for non-primary actions */
+    .nav-btn.secondary {
+      background: rgba(255, 255, 255, 0.08);
+      color: #f1f5f9;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      box-shadow: none;
+    }
+
+    .nav-btn.secondary:hover {
+      background: rgba(255, 255, 255, 0.16);
+      border-color: rgba(212, 175, 55, 0.5);
+      color: #fff;
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+    }
+
+    footer {
+      margin-top: 2rem;
+      font-size: 0.85rem;
+      color: rgba(255, 255, 255, 0.6);
+      letter-spacing: 0.5px;
+    }
+
+    footer span {
+      color: #d4af37;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="main-container">
+    <header>
+      <img class="logo" src="https://i.ibb.co/RG0sDPmk/image.png" alt="البحير logo">
+      <h1>THANK YOU</h1>
+    </header>
+
+    <nav>
+      <button class="nav-btn" onclick="window.location.href='dictionary home.html'">Dictionary</button>
+    
+      <button class="nav-btn onclick="window.location.href='404.html'">Settings</button>
+    </nav>
+  </div>
+
+  <footer>
+    &copy; 2025 Dictionary Project by <span>Shahid Bilal MN</span>
+  </footer>
+
+</body>
+</html>

@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-D6GBPR9CV0"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-D6GBPR9CV0');
+</script>
+  <title>404 Page Not Found</title>
+  <link rel="icon" href="https://i.ibb.co/5hfrKF7t/loogo.png" type="image/png"/>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap');
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: radial-gradient(ellipse at center, #000 0%, #111 100%);
+      color: #0f0;
+      font-family: 'Share Tech Mono', monospace;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .scanline {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: repeating-linear-gradient(
+        0deg,
+        rgba(0, 255, 0, 0.05),
+        rgba(0, 255, 0, 0.05) 1px,
+        transparent 1px,
+        transparent 2px
+      );
+      pointer-events: none;
+      z-index: 10;
+      animation: scan 5s linear infinite;
+    }
+
+    @keyframes scan {
+      0% { background-position: 0 -100vh; }
+      100% { background-position: 0 100vh; }
+    }
+
+    .container {
+      text-align: center;
+      z-index: 5;
+      animation: flicker 2s infinite alternate;
+    }
+
+    .glitch {
+      font-size: 12rem;
+      position: relative;
+      color: #0f0;
+      animation: glitch-animation 1.2s infinite, neonPulse 2s infinite;
+      text-shadow: 0 0 5px #0f0, 0 0 15px #0f0;
+    }
+
+    .glitch::before,
+    .glitch::after {
+      content: attr(data-text);
+      position: absolute;
+      left: 0;
+      width: 100%;
+      overflow: hidden;
+    }
+
+    .glitch::before {
+      animation: glitch-top 1s infinite;
+      color: #f0f;
+      top: -4px;
+    }
+
+    .glitch::after {
+      animation: glitch-bottom 1s infinite;
+      color: #0ff;
+      top: 4px;
+    }
+
+    @keyframes glitch-animation {
+      0% { transform: translate(0); }
+      20% { transform: translate(-2px, 2px); }
+      40% { transform: translate(-2px, -2px); }
+      60% { transform: translate(2px, 2px); }
+      80% { transform: translate(2px, -2px); }
+      100% { transform: translate(0); }
+    }
+
+    @keyframes glitch-top {
+      0% { clip: rect(0, 9999px, 0, 0); }
+      10% { clip: rect(0, 9999px, 50%, 0); }
+      30% { clip: rect(0, 9999px, 60%, 0); }
+      100% { clip: rect(0, 9999px, 0, 0); }
+    }
+
+    @keyframes glitch-bottom {
+      0% { clip: rect(100%, 9999px, 100%, 0); }
+      10% { clip: rect(50%, 9999px, 100%, 0); }
+      30% { clip: rect(40%, 9999px, 100%, 0); }
+      100% { clip: rect(100%, 9999px, 100%, 0); }
+    }
+
+    @keyframes flicker {
+      0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {
+        opacity: 1;
+      }
+      20%, 22%, 24%, 55% {
+        opacity: 0.4;
+      }
+    }
+
+    @keyframes neonPulse {
+      0% { text-shadow: 0 0 5px #0f0, 0 0 15px #0f0; }
+      50% { text-shadow: 0 0 10px #0f0, 0 0 25px #0f0; }
+      100% { text-shadow: 0 0 5px #0f0, 0 0 15px #0f0; }
+    }
+
+    .message {
+      font-size: 2rem;
+      margin-top: 20px;
+      color: #fff;
+      text-shadow: 0 0 5px #0f0, 0 0 10px #0f0;
+      animation: neonPulse 3s infinite;
+    }
+
+    .home-btn {
+      display: inline-block;
+      margin-top: 40px;
+      padding: 12px 30px;
+      font-size: 1.2rem;
+      background: #0f0;
+      color: #000;
+      text-decoration: none;
+      border-radius: 8px;
+      box-shadow: 0 0 15px #0f0, 0 0 30px #0f0 inset;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .home-btn::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: -100%;
+      height: 100%;
+      width: 100%;
+      background: linear-gradient(120deg, transparent, #fff, transparent);
+      transition: left 0.5s;
+    }
+
+    .home-btn:hover::before {
+      left: 100%;
+    }
+
+    .home-btn:hover {
+      background: #fff;
+      color: #000;
+      box-shadow: 0 0 25px #fff;
+    }
+
+    .background-text {
+      position: absolute;
+      font-size: 200px;
+      color: rgba(0,255,0,0.03);
+      z-index: 0;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) rotate(-30deg);
+      white-space: nowrap;
+      pointer-events: none;
+      user-select: none;
+      animation: movebg 15s linear infinite;
+    }
+
+    @keyframes movebg {
+      0% { transform: translate(-50%, -50%) rotate(-30deg) translateX(0); }
+      100% { transform: translate(-50%, -50%) rotate(-30deg) translateX(1000px); }
+    }
+  </style>
+<body>
+  <div class="background-text">ERROR 404 PAGE NOT FOUND</div>
+
+  <div class="container">
+    <div class="glitch" data-text="404">404</div>
+    <div class="message">Oops! The page you're looking for doesn't exist.</div>
+    <a href="dictionary help.html" class="home-btn">Take Me Home</a>
+  </div>
+
+  <div class="scanline"></div>
+</body>
+</html>
