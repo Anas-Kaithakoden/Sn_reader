@@ -46,6 +46,7 @@ arabic_normalized,original_forms,row_count,english_meanings,malayalam_meanings,c
 حول,حَوَّلَ|حَوْلَ,2,2,2,UNKNOWN
 غدا,غَداً|غَدَا,2,2,2,UNKNOWN
 عصر,عَصَرَ|عَصْر,2,4,4,UNKNOWN
+الثلاثاء,الثُّلاَثَاء|الثُّلَاثَاءُ,2,1,2,UNKNOWN
 الان,أَلَانَ|الآنَ,2,2,2,UNKNOWN
 قبعة,قُبَّعَة|قُبَّعَة,2,2,1,UNKNOWN
 حزن,حَزِنَ|حُزْن,2,3,4,UNKNOWN
@@ -163,6 +164,8 @@ arabic_normalized,original_forms,row_count,english_meanings,malayalam_meanings,c
 ثمن,ثَمَن|ثَمَنَ|ثَمَّنَ,3,4,4,UNKNOWN
 ثلث,ثَلَثَ|ثَلَّثَ,2,2,2,UNKNOWN
 ثغر,ثَغَرَ|ثَغَّرَ,2,2,2,UNKNOWN
+الثغر,الثَّغْرُ|الثُّغَرُ,2,2,2,UNKNOWN
+الثمانية,الثَّمَانِيَةُ|الثُّمَانِيَّةُ,2,2,2,UNKNOWN
 جهز,جَهَزَ|جَهَّزَ,2,10,10,UNKNOWN
 جسد,جَسَد|جَسَّدَ,2,3,3,UNKNOWN
 جمد,جَمُدَ|جَمَّدَ,2,6,6,UNKNOWN

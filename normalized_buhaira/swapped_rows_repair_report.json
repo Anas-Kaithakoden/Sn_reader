@@ -1,0 +1,74 @@
+{
+  "input_rows": 4919,
+  "detected_rows": 340,
+  "repaired_rows": 340,
+  "rejected_rows": 0,
+  "unchanged_rows": 4579,
+  "html_rotated_rows_found": 340,
+  "rows_matching_original_html": 340,
+  "changed_rows_in_diff": 340,
+  "validation": {
+    "total_rows": {
+      "value": 4919,
+      "expected": 4919,
+      "pass": true
+    },
+    "unchanged_rows": {
+      "value": 4579,
+      "expected": 4579,
+      "pass": true
+    },
+    "changed_rows": {
+      "value": 340,
+      "expected": 340,
+      "pass": true
+    },
+    "rows_with_no_arabic": {
+      "value": 0,
+      "expected": 0,
+      "pass": true
+    },
+    "malayalam_left_in_arabic": {
+      "value": 0,
+      "expected": 0,
+      "pass": true
+    },
+    "malayalam_without_script": {
+      "value": 0,
+      "expected": 0,
+      "pass": true
+    },
+    "repaired_english_still_arabic": {
+      "value": 0,
+      "expected": 0,
+      "pass": true
+    },
+    "repaired_arabic_is_the_old_english": {
+      "value": 0,
+      "expected": 0,
+      "pass": true
+    },
+    "repaired_malayalam_is_the_old_arabic": {
+      "value": 0,
+      "expected": 0,
+      "pass": true
+    },
+    "repaired_normalized_matches_algorithm": {
+      "value": 0,
+      "expected": 0,
+      "pass": true
+    },
+    "repaired_rows": {
+      "value": 340,
+      "expected": 340,
+      "pass": true
+    },
+    "rejected_rows": {
+      "value": 0,
+      "expected": 0,
+      "pass": true
+    },
+    "diff_exactly_340_targeted_rows": true,
+    "untouched_rows_byte_identical": true
+  }
+}
