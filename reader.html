@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%96%3C/text%3E%3C/svg%3E">
+    <title>Buhaira Reader</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            background: #e9e9e9;
+            color: #333;
+            overflow: hidden;
+            line-height: 1.6;
+        }
+
+        /* ---------- toolbar ---------- */
+        .toolbar {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+            display: flex; align-items: center; gap: 16px; flex-wrap: nowrap;
+            background: #fff; padding: 8px 14px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+            height: 54px; overflow-x: auto;
+        }
+        .brand {
+            font-weight: 700; color: #2e7d32; font-size: 16px; white-space: nowrap;
+            display: flex; align-items: center; gap: 6px;
+        }
+        .tb-group { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+        .tb-group.right { margin-left: auto; }
+        button {
+            background: #fff; border: 1px solid #ccc; border-radius: 6px;
+            padding: 6px 10px; font-size: 13px; cursor: pointer; color: #333;
+            transition: background .15s, border-color .15s;
+        }
+        button:hover:not(:disabled) { background: #f0f0f0; border-color: #999; }
+        button:disabled { opacity: .45; cursor: default; }
+        button.primary { background: #4CAF50; border-color: #4CAF50; color: #fff; }
+        button.primary:hover:not(:disabled) { background: #43A047; }
+        button.toggle-on { background: #4CAF50; border-color: #4CAF50; color: #fff; }
+        .file-name {
+            font-size: 13px; color: #555; max-width: 220px;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+        }
+        #status { font-size: 12px; color: #777; min-width: 60px; text-align: right; }
+        .page-nav input[type=number] {
+            width: 52px; padding: 4px 6px; font-size: 13px; text-align: center;
+            border: 1px solid #ccc; border-radius: 6px;
+        }
+        .page-nav span { font-size: 13px; color: #555; }
+        #zoomLabel { font-size: 13px; min-width: 42px; text-align: center; color: #555; }
+
+        /* ---------- main layout ---------- */
+        .main {
+            position: fixed; top: 54px; left: 0; right: 0; bottom: 0;
+            display: flex; align-items: stretch;
+        }
+        .viewer {
+            flex: 1; overflow-y: auto; overflow-x: hidden;
+            background: #e9e9e9;
+            padding: 0 12px 40px;
+            position: relative;
+        }
+        #pages { position: relative; width: 100%; }
+
+        /* ---------- pages / text layer ---------- */
+        .pdf-page {
+            position: absolute; left: 50%; transform: translateX(-50%);
+            background: #fff; box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+            overflow: hidden;
+        }
+        .pdf-page canvas { display: block; }
+        .pdf-page .textLayer {
+            position: absolute; top: 0; left: 0; overflow: hidden;
+            line-height: 1;
+            opacity: 0;
+            transition: opacity .15s ease-in;
+        }
+        .pdf-page .textLayer.ready { opacity: 1; }
+        .pdf-page .textLayer span {
+            position: absolute;
+            white-space: pre;
+            cursor: text;
+            transform-origin: 0% 0%;
+            line-height: calc(var(--scale-factor) * 1.3);
+            color: transparent;
+            user-select: text;
+        }
+        ::selection { background: rgba(76,175,80,0.30); }
+
+        /* ---------- empty / loading states ---------- */
+        .hint {
+            position: absolute; inset: 0;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            color: #888; text-align: center; padding: 24px; pointer-events: none;
+        }
+        .hint .big { font-size: 42px; margin-bottom: 12px; }
+        .hint h2 { color: #666; margin-bottom: 8px; font-size: 20px; }
+        .hint p { font-size: 14px; max-width: 460px; }
+        .hidden { display: none !important; }
+
+        /* drag-drop overlay */
+        .drop-overlay {
+            position: fixed; top: 54px; left: 0; right: 0; bottom: 0; z-index: 200;
+            background: rgba(76,175,80,0.12); border: 3px dashed #4CAF50;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 26px; color: #2e7d32; pointer-events: none;
+        }
+
+        /* ---------- sidebar ---------- */
+        .sidebar {
+            width: 390px; background: #fff; border-left: 1px solid #ddd;
+            display: flex; flex-direction: column; flex-shrink: 0;
+            transition: margin-right .2s ease, opacity .2s ease;
+        }
+        .sidebar.closed { margin-right: -390px; opacity: 0; }
+        .sidebar-head {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 10px 14px; background: #4CAF50; color: #fff;
+            font-weight: 600; font-size: 15px;
+        }
+        .sidebar-head button {
+            background: transparent; border: none; color: #fff; font-size: 18px;
+            line-height: 1; padding: 2px 6px;
+        }
+        .lookup-panel { border-bottom: 1px solid #e0e0e0; max-height: 40%; overflow-y: auto; }
+        .lookup-head {
+            display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+            padding: 10px 14px 0; font-size: 13px; color: #555;
+        }
+        .lookup-head .q-ar {
+            font-size: 20px; color: #1a365d; font-family: 'Amiri', 'Times New Roman', 'Arial', sans-serif;
+            direction: rtl; font-weight: 700;
+        }
+        .badge { font-size: 11px; padding: 2px 8px; border-radius: 999px; font-weight: 600; }
+        .badge.exact { background: #e8f5e9; color: #2e7d32; }
+        .badge.norm  { background: #fff3e0; color: #e65100; }
+        .badge.none  { background: #fce4ec; color: #c62828; }
+        .lookup-body { padding: 8px 14px 12px; }
+        .lookup-note { font-size: 12px; color: #777; margin: 4px 0 8px; }
+        .entry {
+            border: 1px solid #e0e0e0; border-radius: 8px; padding: 10px 12px;
+            margin-bottom: 8px; background: #fafafa;
+        }
+        .entry:last-child { margin-bottom: 0; }
+        .entry .spell {
+            font-size: 11px; color: #888; margin-bottom: 4px; letter-spacing: .3px;
+        }
+        .entry .ar {
+            font-size: 22px; color: #1a365d; direction: rtl; text-align: right;
+            font-family: 'Amiri', 'Times New Roman', 'Arial', sans-serif; line-height: 1.8;
+        }
+        .entry .en { font-size: 14px; color: #333; margin-top: 2px; }
+        .entry .ml {
+            font-size: 14px; color: #555; margin-top: 2px;
+            font-family: 'Noto Sans Malayalam', 'Manjari', sans-serif; line-height: 1.7;
+        }
+        .not-found { color: #c62828; font-size: 14px; text-align: center; padding: 14px; }
+
+        /* search table (mirrors dictionary.html) */
+        .controls { padding: 10px 14px; border-bottom: 1px solid #eee; }
+        .search-box {
+            width: 100%; padding: 9px 12px; font-size: 14px;
+            border: 2px solid #ddd; border-radius: 6px; margin-bottom: 8px;
+        }
+        .search-box:focus { outline: none; border-color: #4CAF50; }
+        .info { color: #666; font-size: 12px; display: flex; justify-content: space-between; align-items: center; }
+        .table-wrap { flex: 1; overflow-y: auto; background: #fff; }
+        table { width: 100%; border-collapse: collapse; }
+        thead { background: #4CAF50; color: white; position: sticky; top: 0; z-index: 5; }
+        th { padding: 8px 10px; text-align: left; font-weight: 600; font-size: 11px; text-transform: uppercase; }
+        th:nth-child(2) { text-align: right; }
+        td { padding: 8px 10px; border-bottom: 1px solid #eee; font-size: 12px; vertical-align: top; }
+        td:nth-child(2) {
+            color: #1a365d; text-align: right; font-size: 16px;
+            font-family: 'Amiri', 'Times New Roman', 'Arial', sans-serif;
+            direction: rtl; line-height: 1.8;
+        }
+        td:last-child { font-family: 'Noto Sans Malayalam', 'Manjari', sans-serif; }
+        tbody tr:hover { background: #f9f9f9; }
+        .no-results { text-align: center; padding: 30px; color: #999; display: none; }
+        .highlight { background: #ffff99; }
+
+        /* ---------- lookup popup ---------- */
+        .lookup-popup {
+            position: fixed; z-index: 300; width: 380px; max-width: calc(100vw - 24px);
+            max-height: 60vh; overflow-y: auto;
+            background: #fff; border-radius: 10px;
+            box-shadow: 0 6px 24px rgba(0,0,0,0.28);
+            border: 1px solid #e0e0e0;
+        }
+        .lookup-popup .popup-head {
+            display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+            padding: 10px 14px; background: #e8f5e9;
+            border-bottom: 1px solid #c8e6c9; border-radius: 9px 9px 0 0;
+        }
+        .lookup-popup .popup-body { padding: 12px 14px; }
+        .lookup-popup .entry { background: #fff; }
+        .popup-close {
+            margin-left: auto; background: transparent; border: none;
+            font-size: 16px; color: #666; cursor: pointer; padding: 2px 6px;
+        }
+        .popup-close:hover { color: #000; }
+
+        /* collapse on small screens */
+        @media (max-width: 860px) {
+            .sidebar { position: fixed; top: 54px; right: 0; bottom: 0; z-index: 150; }
+        }
+    </style>
+</head>
+<body>
+
+    <header class="toolbar">
+        <div class="brand">📖 Buhaira Reader</div>
+        <div class="tb-group">
+            <button class="primary" id="openBtn">Open PDF</button>
+            <input type="file" id="fileInput" accept=".pdf,application/pdf" hidden>
+            <span class="file-name" id="fileName">No file open — drop a PDF anywhere</span>
+        </div>
+        <div class="tb-group page-nav">
+            <button id="prevBtn" title="Previous page" disabled>◀</button>
+            <input type="number" id="pageInput" min="1" value="1" disabled>
+            <span id="pageTotal">/ 0</span>
+            <button id="nextBtn" title="Next page" disabled>▶</button>
+        </div>
+        <div class="tb-group zoom">
+            <button id="zoomOut" title="Zoom out" disabled>−</button>
+            <span id="zoomLabel">Fit</span>
+            <button id="zoomIn" title="Zoom in" disabled>+</button>
+            <button id="fitBtn" title="Fit page width" disabled>Fit</button>
+        </div>
+        <div class="tb-group right">
+            <span id="status"></span>
+            <button id="dictToggle" class="toggle-on">Dictionary</button>
+        </div>
+    </header>
+
+    <div class="main">
+        <div class="viewer" id="viewer">
+            <div id="pages"></div>
+            <div class="hint" id="hint">
+                <div class="big">📖</div>
+                <h2>Open a PDF to start reading</h2>
+                <p>Click <b>Open PDF</b>, or drag &amp; drop a file anywhere on this page.
+                   Select any Arabic word in the text to look it up in the dictionary.</p>
+            </div>
+        </div>
+
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-head">
+                <span>📚 Dictionary</span>
+                <button id="closeSidebar" title="Close dictionary">✕</button>
+            </div>
+            <div class="lookup-panel hidden" id="lookupPanel">
+                <div class="lookup-head" id="lookupHead"></div>
+                <div class="lookup-body" id="lookupBody"></div>
+            </div>
+            <div class="controls">
+                <input type="text" id="dictSearch" class="search-box"
+                       placeholder="Search in English, Arabic, or Malayalam..." autocomplete="off">
+                <div class="info">
+                    <span><span id="resultCount">0</span> results</span>
+                    <span>Showing <span id="showingCount">0</span></span>
+                </div>
+            </div>
+            <div class="table-wrap" id="tableWrap">
+                <table>
+                    <thead><tr><th>English</th><th>Arabic</th><th>Malayalam</th></tr></thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+                <div id="noResults" class="no-results">No matches found</div>
+            </div>
+        </aside>
+    </div>
+
+    <div class="drop-overlay hidden" id="dropOverlay">Drop your PDF here</div>
+    <div class="lookup-popup hidden" id="lookupPopup"></div>
+
+    <script src="lib/pdf.min.js"></script>
+    <script>
+    'use strict';
+
+    /* ==================================================================
+     * DICTIONARY (mirrors database/lookup.py + normalized_buhaira)
+     * ================================================================== */
+
+    const ARABIC_RE = /[\u0600-\u06FF\u0750-\u077F\u08A0-\u08FF\uFB50-\uFDFF\uFE70-\uFEFF]/;
+
+    // Arabic PDFs often store shaped "presentation forms" (U+FB50.., U+FE70..)
+    // instead of plain letters. NFKC maps them back to base letters.
+    function toBase(s) {
+        if (!s) return s;
+        return String(s).normalize('NFKC');
+    }
+    function reverseString(s) { return [...s].reverse().join(''); }
+
+    // Port of normalized_buhaira/normalize_arabic.py (verified: 3812 distinct keys)
+    function normalizeArabic(s) {
+        if (!s) return s;
+        s = String(s);
+        s = s.replace(/[\u064B-\u0652\u0670\u06D6-\u06ED\u08D3-\u08FF]/gu, ''); // diacritics + quranic marks
+        s = s.replace(/\u0640/g, '');                                          // tatweel
+        s = s.replace(/\u0622/g, '\u0627').replace(/\u0623/g, '\u0627')
+             .replace(/\u0625/g, '\u0627').replace(/\u0671/g, '\u0627');       // alef hamza variants
+        s = s.replace(/\u0624/g, '\u0648');                                   // و with hamza
+        s = s.replace(/\u0626/g, '\u064A');                                   // ي with hamza
+        s = s.replace(/\u0649/g, '\u064A');                                   // alef maqsura
+        s = s.replace(/\u06CC/g, '\u064A');                                   // Farsi ye
+        s = s.replace(/\u06A9/g, '\u0643');                                   // Farsi keheh
+        s = s.replace(/\s+/g, ' ').trim();
+        return s;
+    }
+
+    let dictRows = [];
+    let exactMap = new Map();       // arabic (original)           -> entries[]
+    let normMap = new Map();        // normalized arabic           -> entries[]
+
+    function buildIndexes(rows) {
+        exactMap = new Map();
+        normMap = new Map();
+        for (const row of rows) {
+            const a = toBase(row.arabic || '');
+            if (!exactMap.has(a)) exactMap.set(a, []);
+            exactMap.get(a).push(row);
+            const k = normalizeArabic(a);
+            if (!normMap.has(k)) normMap.set(k, []);
+            normMap.get(k).push(row);
+        }
+    }
+
+    // Exact first, then normalized fallback. NEVER picks a single winner.
+    function lookupArabic(raw) {
+        const query = toBase((raw || '').replace(/\s+/g, ' ').trim());
+        if (!query) return { matchType: 'none', query, entries: [] };
+        let hit = exactMap.get(query);
+        if (hit && hit.length) return { matchType: 'exact', query, entries: hit };
+        const key = normalizeArabic(query);
+        hit = normMap.get(key);
+        if (hit && hit.length) return { matchType: 'normalized', query, key, spellingCount: distinctSpellings(hit).length, entries: hit };
+        return { matchType: 'none', query, key, entries: [] };
+    }
+
+    function distinctSpellings(entries) {
+        const seen = [];
+        for (const e of entries) if (!seen.includes(e.arabic)) seen.push(e.arabic);
+        return seen;
+    }
+
+    // Whole selection first; on a miss try each word. Also tries the reversed
+// whole selection, since some old Arabic PDFs store visual-order text.
+    function lookupSelection(text) {
+        const clean = (text || '').replace(/\u00A0/g, ' ').replace(/\s+/g, ' ').trim();
+        if (!clean) return [];
+        const base = toBase(clean);
+        const revBase = reverseString(base);
+
+        const results = [];
+        const push = r => { if (r.entries.length && !results.some(p => p.query === r.query)) results.push(r); };
+
+        push(lookupArabic(base));          // forward, whole selection
+        if (ARABIC_RE.test(base)) push(lookupArabic(revBase));   // reversed (visual-order PDFs)
+
+        if (!results.length) {             // per-word fallbacks
+            const words = (s) => s.split(' ').filter(w => ARABIC_RE.test(w));
+            for (const w of words(base)) push(lookupArabic(w));
+            if (!results.length) for (const w of words(revBase)) push(lookupArabic(w));
+        }
+        if (results.length) return results;
+        return [lookupArabic(base)];       // "not found" presentation
+    }
+
+    /* ==================================================================
+     * SEARCH PANEL (same behaviour as dictionary.html)
+     * ================================================================== */
+    let searchData = [];
+    let filteredData = [];
+    const CHUNK_SIZE = 500;
+    let displayedCount = 0;
+    let searchLoading = false;
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text == null ? '' : String(text);
+        return div.innerHTML;
+    }
+
+    function highlight(text, term) {
+        const safe = escapeHtml(text);
+        if (!term) return safe;
+        try {
+            const re = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+            return safe.replace(re, '<span class="highlight">$&</span>');
+        } catch (e) { return safe; }
+    }
+
+    function updateCounts() {
+        document.getElementById('resultCount').textContent = filteredData.length.toLocaleString();
+        document.getElementById('showingCount').textContent = displayedCount.toLocaleString();
+        document.getElementById('noResults').style.display = filteredData.length === 0 ? 'block' : 'none';
+    }
+
+    function loadMore() {
+        if (searchLoading || displayedCount >= filteredData.length) return;
+        searchLoading = true;
+        const tbody = document.getElementById('tableBody');
+        const end = Math.min(displayedCount + CHUNK_SIZE, filteredData.length);
+        const term = document.getElementById('dictSearch').value.trim();
+        let html = '';
+        for (let i = displayedCount; i < end; i++) {
+            const row = filteredData[i];
+            html += '<tr><td>' + highlight(row.english || '', term) + '</td><td>' +
+                    highlight(row.arabic || '', term) + '</td><td>' +
+                    highlight(row.malayalam || '', term) + '</td></tr>';
+        }
+        tbody.insertAdjacentHTML('beforeend', html);
+        displayedCount = end;
+        updateCounts();
+        searchLoading = false;
+    }
+
+    const dictSearch = document.getElementById('dictSearch');
+    dictSearch.addEventListener('input', function() {
+        const term = this.value.toLowerCase().trim();
+        filteredData = term === '' ? searchData : searchData.filter(row =>
+            (row.english || '').toLowerCase().includes(term) ||
+            (row.arabic || '').toLowerCase().includes(term) ||
+            (row.malayalam || '').toLowerCase().includes(term));
+        document.getElementById('tableBody').innerHTML = '';
+        displayedCount = 0;
+        updateCounts();
+        loadMore();
+    });
+
+    document.getElementById('tableWrap').addEventListener('scroll', function() {
+        if (this.scrollTop + this.clientHeight >= this.scrollHeight - 100) loadMore();
+    });
+
+    /* ==================================================================
+     * LOOKUP RESULT RENDERING
+     * ================================================================== */
+    function entryHTML(e, showSpelling) {
+        const spell = showSpelling
+            ? '<div class="spell">' + escapeHtml(e.arabic) + '</div>' : '';
+        return '<div class="entry">' + spell +
+            '<div class="ar">' + escapeHtml(e.arabic) + '</div>' +
+            '<div class="en">' + escapeHtml(e.english || '') + '</div>' +
+            '<div class="ml">' + escapeHtml(e.malayalam || '') + '</div></div>';
+    }
+
+    function showLookup(results, silent) {
+        renderLookupPanel(results, document.getElementById('lookupPanel'));
+        if (!silent && results.length) {
+            if (sidebar.classList.contains('closed')) toggleSidebar(true);
+        }
+    }
+
+    function renderLookupPanel(results, panel) {
+        const head = document.getElementById('lookupHead');
+        const body = document.getElementById('lookupBody');
+        let headHtml = '', bodyHtml = '';
+        for (const r of results) {
+            let badge = '', note = '';
+            if (r.matchType === 'exact') {
+                badge = '<span class="badge exact">exact</span>';
+                if (r.entries.length > 1)
+                    note = 'Multiple senses of this exact form are shown — pick using context.';
+            } else if (r.matchType === 'normalized') {
+                badge = '<span class="badge norm">normalized</span>';
+                note = 'No exact match for the vocalized form. '
+                     + (r.spellingCount > 1
+                        ? r.spellingCount + ' spellings normalize to <b dir="rtl">' + escapeHtml(r.key) + '</b> — all candidates shown.'
+                        : 'Matched via normalized unvocalized form <b dir="rtl">' + escapeHtml(r.key) + '</b>.');
+            } else {
+                badge = '<span class="badge none">not found</span>';
+                note = 'No dictionary entry matches this text exactly or in normalized form.';
+            }
+            headHtml += '<span class="q-ar" dir="rtl">' + escapeHtml(r.query) + '</span>' + badge;
+            bodyHtml += '<div class="lookup-note">' + note + '</div>';
+            const spells = distinctSpellings(r.entries);
+            bodyHtml += r.entries.length
+                ? r.entries.map(e => entryHTML(e, spells.length > 1)).join('')
+                : '<div class="not-found">No matches in the dictionary.</div>';
+        }
+        head.innerHTML = headHtml;
+        body.innerHTML = bodyHtml;
+        panel.classList.toggle('hidden', !headHtml);
+    }
+
+    function clearLookupPanel() {
+        document.getElementById('lookupHead').innerHTML = '';
+        document.getElementById('lookupBody').innerHTML = '';
+        document.getElementById('lookupPanel').classList.add('hidden');
+    }
+
+    /* ==================================================================
+     * LOOKUP POPUP (word selected in the PDF)
+     * ================================================================== */
+    const popup = document.getElementById('lookupPopup');
+
+    function closePopup() { popup.classList.add('hidden'); }
+
+    function positionPopup(rect) {
+        const pw = popup.offsetWidth, ph = popup.offsetHeight;
+        let left = rect.right - pw;
+        left = Math.max(8, Math.min(left, window.innerWidth - pw - 8));
+        let top = rect.bottom + 10;
+        if (top + ph > window.innerHeight - 8) top = Math.max(8, rect.top - ph - 10);
+        popup.style.left = left + 'px';
+        popup.style.top = top + 'px';
+    }
+
+    function showPopup(results, rect) {
+        let html = '<div class="popup-head">';
+        html += '<span style="font-weight:600">Dictionary lookup</span>';
+        html += '<button class="popup-close" title="Close (Esc)">✕</button></div>';
+        html += '<div class="popup-body">';
+        let first = true;
+        for (const r of results) {
+            if (results.length > 1 && first) {
+                html += '<div class="lookup-note">No entry for the whole selection — showing per-word matches:</div>';
+            }
+            html += '<div class="lookup-note"><b dir="rtl">' + escapeHtml(r.query) + '</b> — ' +
+                    (r.matchType === 'exact' ? 'exact'
+                     : r.matchType === 'normalized' ? (r.spellingCount > 1 ? 'matches these spellings' : 'normalized form')
+                     : 'not found') + '</div>';
+            const spells = distinctSpellings(r.entries);
+            html += r.entries.length
+                ? r.entries.map(e => entryHTML(e, spells.length > 1)).join('')
+                : '<div class="not-found">No matches in the dictionary.</div>';
+            first = false;
+        }
+        html += '</div>';
+        popup.innerHTML = html;
+        popup.querySelector('.popup-close').addEventListener('click', closePopup);
+        popup.classList.remove('hidden');
+        positionPopup(rect);
+    }
+
+    function handleSelection() {
+        const sel = window.getSelection();
+        if (!sel || sel.isCollapsed) return;
+        const anchor = sel.anchorNode;
+        if (!anchor || !document.getElementById('viewer').contains(anchor)) return;
+        const text = sel.toString();
+        if (!ARABIC_RE.test(text)) return;
+        const results = lookupSelection(text);
+        if (!results.length) return;
+        showLookup(results);
+        let rect = null;
+        try {
+            rect = sel.getRangeAt(0).getBoundingClientRect();
+        } catch (e) { /* ignore */ }
+        if (rect && (rect.width || rect.height)) showPopup(results, rect);
+        else showPopup(results, { right: window.innerWidth / 2, top: 200, bottom: 200, width: 0, height: 0 });
+    }
+
+    let selTimer = null;
+    document.getElementById('viewer').addEventListener('mouseup', function() {
+        clearTimeout(selTimer);
+        selTimer = setTimeout(handleSelection, 140);
+    });
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') closePopup();
+    });
+    document.addEventListener('mousedown', function(e) {
+        if (!popup.classList.contains('hidden') && !popup.contains(e.target)) closePopup();
+    });
+
+    /* ==================================================================
+     * PDF RENDERING
+     * ================================================================== */
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'lib/pdf.worker.min.js';
+
+    const viewer           = document.getElementById('viewer');
+    const pagesEl          = document.getElementById('pages');
+    const hint             = document.getElementById('hint');
+    const fileNameEl       = document.getElementById('fileName');
+    const statusEl         = document.getElementById('status');
+    const pageInput        = document.getElementById('pageInput');
+    const pageTotalEl      = document.getElementById('pageTotal');
+    const prevBtn          = document.getElementById('prevBtn');
+    const nextBtn          = document.getElementById('nextBtn');
+    const zoomOutBtn       = document.getElementById('zoomOut');
+    const zoomInBtn        = document.getElementById('zoomIn');
+    const fitBtn           = document.getElementById('fitBtn');
+    const zoomLabel        = document.getElementById('zoomLabel');
+    const dictToggle       = document.getElementById('dictToggle');
+    const sidebar          = document.getElementById('sidebar');
+
+    const PAGE_GAP = 18, TOP_PAD = 24;
+    let pdfDoc = null;
+    let basePages = [];           // {w, h} at scale 1
+    let pageEls = [];             // slot elements + render state
+    let zoom = 0;                 // 0 => fit width mode
+    let fitMode = true;
+    let currentPage = 1;
+
+    function setControlsEnabled(on) {
+        [prevBtn, nextBtn, pageInput, zoomOutBtn, zoomInBtn, fitBtn].forEach(b => {
+            if (b.tagName === 'INPUT') b.disabled = !on;
+            else b.disabled = !on;
+        });
+        if (!on) { zoomLabel.textContent = 'Fit'; }
+    }
+
+    function slotTop(i)  { return TOP_PAD + basePages.slice(0, i).reduce((s, p) => s + h(p) + PAGE_GAP, 0); }
+    function h(p) { return p.h * zoom; }
+    function w(p) { return p.w * zoom; }
+
+    function buildSlots() {
+        pagesEl.innerHTML = '';
+        pageEls = [];
+        let totalH = TOP_PAD;
+        basePages.forEach((p, i) => {
+            const pageW = Math.round(w(p));
+            const pageH = Math.round(h(p));
+            const el = document.createElement('div');
+            el.className = 'pdf-page';
+            el.style.width = pageW + 'px';
+            el.style.height = pageH + 'px';
+            el.style.top = totalH + 'px';
+            const canvas = document.createElement('canvas');
+            const text = document.createElement('div');
+            text.className = 'textLayer';
+            text.style.setProperty('--scale-factor', String(zoom)); // needed before renderTextLayer
+            el.append(canvas, text);
+            pagesEl.appendChild(el);
+            pageEls.push({
+                n: i + 1, el, canvas, text,
+                ctx: canvas.getContext('2d'),
+                done: false, rendering: false, gen: 0, task: null
+            });
+            totalH += pageH + PAGE_GAP;
+        });
+        pagesEl.style.height = totalH + 'px';
+    }
+
+    function syncRender() {
+        const top = viewer.scrollTop, bottom = top + viewer.clientHeight;
+        const count = pageEls.length;
+        let visible = [];
+        for (let i = 0; i < count; i++) {
+            const t = viewerPageTop(i), b = t + pageHeight(i);
+            if (b >= top && t <= bottom) visible.push(i);
+            if (t > bottom) break;
+        }
+        if (!visible.length) {
+            if (count) { const mid = top / Math.max(1, pagesEl.offsetHeight) * count; visible.push(Math.min(count - 1, Math.max(0, Math.floor(mid)))); }
+        }
+        const first = Math.max(0, visible[0] - 3);
+        const last  = Math.min(count - 1, visible[visible.length - 1] + 3);
+        for (let i = first; i <= last; i++) {
+            const pe = pageEls[i];
+            if (!pe.done && !pe.rendering) renderPage(i, pe);
+        }
+        for (let i = 0; i < count; i++) {
+            if (i >= first && i <= last) continue;
+            const pe = pageEls[i];
+            if (pe.done || pe.rendering) unrenderPage(i, pe);
+        }
+        updatePageIndicator(top, bottom);
+    }
+
+    function viewerPageTop(i)    { return TOP_PAD + basePages.slice(0, i).reduce((s, p) => s + h(p) + PAGE_GAP, 0); }
+    function pageHeight(i)       { return h(basePages[i]); }
+
+    function updatePageIndicator(top, bottom) {
+        const count = pageEls.length;
+        if (!count) { pageInput.value = ''; pageTotalEl.textContent = '/ 0'; return; }
+        currentPage = 1;
+        for (let i = 0; i < count; i++) {
+            const t = viewerPageTop(i), b = t + pageHeight(i);
+            if (t <= top + (bottom - top) * 0.3 && b >= top) currentPage = i + 1;
+        }
+        pageInput.value = currentPage;
+        prevBtn.disabled = currentPage <= 1;
+        nextBtn.disabled = currentPage >= count;
+    }
+
+    async function renderPage(i, pe) {
+        pe.rendering = true;
+        const gen = pe.gen;
+        try {
+            const page = await pdfDoc.getPage(pe.n);
+            if (pe.gen !== gen || !pe.rendering) return;
+            const dpr = window.devicePixelRatio || 1;
+            const textVp = page.getViewport({ scale: zoom });
+            const renderVp = page.getViewport({ scale: zoom * dpr });
+            pe.canvas.width = Math.round(renderVp.width);
+            pe.canvas.height = Math.round(renderVp.height);
+            pe.canvas.style.width = Math.round(textVp.width) + 'px';
+            pe.canvas.style.height = Math.round(textVp.height) + 'px';
+            pe.text.style.setProperty('--scale-factor', String(textVp.scale));
+            const task = page.render({ canvasContext: pe.ctx, viewport: renderVp });
+            pe.task = task;
+            try { await task.promise; }
+            catch (e) {
+                if (pe.gen !== gen || e && e.name === 'RenderingCancelledException') return;
+                throw e;
+            }
+            if (pe.gen !== gen) return;
+            const text = await page.getTextContent();
+            if (pe.gen !== gen) return;
+            pdfjsLib.renderTextLayer({ textContentSource: text, container: pe.text, viewport: textVp });
+            if (pe.gen !== gen) return;
+            pe.text.classList.add('ready');
+            pe.done = true;
+            pe.rendering = false;
+        } catch (err) {
+            pe.rendering = false;
+            if (err && (err.name === 'RenderingCancelledException')) return;
+            console.error('render page', pe.n, err);
+        }
+    }
+
+    function unrenderPage(i, pe) {
+        pe.gen++;
+        pe.rendering = false;
+        pe.done = false;
+        if (pe.task) try { pe.task.cancel(); } catch (e) {}
+        pe.task = null;
+        pe.el.querySelectorAll('canvas, .textLayer').forEach(c => {
+            if (c.tagName === 'CANVAS') c.getContext('2d').clearRect(0, 0, c.width, c.height);
+            else c.replaceChildren();
+        });
+    }
+
+    let rafId = null;
+    viewer.addEventListener('scroll', function() {
+        if (rafId) return;
+        rafId = requestAnimationFrame(function() {
+            rafId = null;
+            syncRender();
+        });
+    });
+
+    /* ---------- navigation & zoom ---------- */
+    function scrollToPage(n) {
+        n = Math.max(1, Math.min(basePages.length, n));
+        const t = viewerPageTop(n - 1) - 12;
+        viewer.scrollTop = Math.max(0, t);
+        syncRender();
+    }
+    prevBtn.addEventListener('click', () => scrollToPage(currentPage - 1));
+    nextBtn.addEventListener('click', () => scrollToPage(currentPage + 1));
+    pageInput.addEventListener('change', function() {
+        const v = parseInt(this.value, 10);
+        if (!isNaN(v)) scrollToPage(v);
+    });
+
+    function setZoom(z, showLabel) {
+        zoom = z;
+        fitMode = false;
+        if (showLabel !== false) zoomLabel.textContent = Math.round(zoom * 100) + '%';
+        rebuild();
+    }
+    function fitWidth() {
+        if (!basePages.length || !pdfDoc) return;
+        const avail = viewer.clientWidth - 40;
+        zoom = Math.max(0.5, Math.min(3, avail / basePages[0].w));
+        fitMode = true;
+        zoomLabel.textContent = 'Fit';
+        rebuild();
+    }
+    zoomInBtn.addEventListener('click', () => setZoom(Math.min(4, +(zoom * 1.15).toFixed(3))));
+    zoomOutBtn.addEventListener('click', () => setZoom(Math.max(0.3, +(zoom / 1.15).toFixed(3))));
+    fitBtn.addEventListener('click', () => fitWidth());
+
+    window.addEventListener('resize', function() {
+        if (fitMode) fitWidth();
+    });
+
+    function rebuild() {
+        if (!pdfDoc) return;
+        buildSlots();
+        syncRender();
+    }
+
+    /* ---------- open file ---------- */
+    async function openFile(file) {
+        if (!file || !/\.pdf$/i.test(file.name)) {
+            statusEl.textContent = 'Please choose a .pdf file';
+            return;
+        }
+        hint.classList.add('hidden');
+        fileNameEl.textContent = file.name;
+        document.title = 'Buhaira Reader — ' + file.name;
+        statusEl.textContent = 'Loading…';
+        if (pdfDoc) {
+            pageEls.forEach(pe => {           // drop any in-flight renders of the old doc
+                pe.gen++; pe.rendering = false; pe.done = false;
+                if (pe.task) { try { pe.task.cancel(); } catch (e) {} pe.task = null; }
+            });
+            try { await pdfDoc.destroy(); } catch (e) {}
+        }
+        const data = await file.arrayBuffer();
+        const task = pdfjsLib.getDocument({ data });
+        task.onProgress = function(p) {
+            if (p.total) statusEl.textContent = 'Loading… ' + Math.round(p.loaded / p.total * 100) + '%';
+        };
+        try {
+            pdfDoc = await task.promise;
+        } catch (err) {
+            console.error(err);
+            statusEl.textContent = 'Could not open PDF';
+            hint.classList.remove('hidden');
+            hint.querySelector('h2').textContent = 'Could not open this PDF';
+            hint.querySelector('p').innerHTML = escapeHtml(String(err && err.message || err));
+            return;
+        }
+        statusEl.textContent = 'Rendering…';
+        // pre-measure all pages at scale 1
+        basePages = [];
+        const promises = [];
+        for (let n = 1; n <= pdfDoc.numPages; n++) {
+            promises.push(pdfDoc.getPage(n).then(p => {
+                const vp = p.getViewport({ scale: 1 });
+                return { w: vp.width, h: vp.height };
+            }));
+        }
+        basePages = await Promise.all(promises);
+        if (fitMode) fitWidth(); else rebuild();
+        setControlsEnabled(true);
+        pageTotalEl.textContent = '/ ' + pdfDoc.numPages;
+        scrollToPage(1);
+        syncRender();
+        statusEl.textContent = 'Ready — ' + pdfDoc.numPages + ' page' + (pdfDoc.numPages === 1 ? '' : 's');
+    }
+
+    document.getElementById('openBtn').addEventListener('click', () => document.getElementById('fileInput').click());
+    document.getElementById('fileInput').addEventListener('change', function() {
+        if (this.files && this.files[0]) openFile(this.files[0]);
+        this.value = '';
+    });
+
+    /* drag & drop */
+    const dropOverlay = document.getElementById('dropOverlay');
+    let dragDepth = 0;
+    window.addEventListener('dragenter', function(e) {
+        e.preventDefault();
+        dragDepth++;
+        dropOverlay.classList.remove('hidden');
+    });
+    window.addEventListener('dragover', e => e.preventDefault());
+    window.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        if (--dragDepth <= 0) { dragDepth = 0; dropOverlay.classList.add('hidden'); }
+    });
+    window.addEventListener('drop', function(e) {
+        e.preventDefault();
+        dragDepth = 0;
+        dropOverlay.classList.add('hidden');
+        const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+        if (f) openFile(f);
+    });
+
+    /* ---------- sidebar toggle ---------- */
+    function toggleSidebar(open) {
+        const isOpen = !sidebar.classList.contains('closed');
+        if (open !== undefined && open === isOpen) return;
+        sidebar.classList.toggle('closed');
+        dictToggle.classList.toggle('toggle-on', !sidebar.classList.contains('closed'));
+    }
+    dictToggle.addEventListener('click', () => toggleSidebar());
+    document.getElementById('closeSidebar').addEventListener('click', () => toggleSidebar(false));
+
+    /* ---------- init ---------- */
+    setControlsEnabled(false);
+    fetch('dictionary.json')
+        .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .then(data => {
+            dictRows = data;
+            buildIndexes(data);
+            searchData = data;
+            filteredData = data;
+            updateCounts();
+            loadMore();
+        })
+        .catch(err => {
+            console.error('dictionary load failed:', err);
+            document.getElementById('dictSearch').placeholder = 'Dictionary unavailable — serve over HTTP';
+        });
+    </script>
+</body>
+</html>
