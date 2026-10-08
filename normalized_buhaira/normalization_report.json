@@ -1,12 +1,12 @@
 {
   "input_rows": 4919,
-  "unique_original_arabic": 4164,
+  "unique_original_arabic": 4167,
   "unique_normalized_arabic": 3812,
-  "normalization_reduction": 352,
-  "rows_changed": 4579,
-  "collision_groups": 283,
+  "normalization_reduction": 355,
+  "rows_changed": 4919,
+  "collision_groups": 286,
   "safe_collision_groups": 0,
   "vocalization_collision_groups": 0,
   "potentially_different_word_groups": 0,
-  "unknown_collision_groups": 283
+  "unknown_collision_groups": 286
 }

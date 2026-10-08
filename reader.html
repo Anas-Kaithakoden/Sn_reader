@@ -91,6 +91,34 @@
         }
         ::selection { background: rgba(76,175,80,0.30); }
 
+        /* ---------- OCR overlay (scanned / image-only PDFs) ----------
+         * Precomputed word boxes from data/ocr/<pdf-name>/ (the browser
+         * never runs OCR). The layer itself is click-through; only the
+         * word boxes capture taps, and they are fully transparent until
+         * hovered/selected so the scan stays unobscured. */
+        .pdf-page .ocrLayer {
+            position: absolute; top: 0; left: 0;
+            overflow: hidden;
+            pointer-events: none;
+        }
+        .pdf-page .ocrLayer .ocr-word {
+            position: absolute;
+            pointer-events: auto;
+            cursor: pointer;
+            background: transparent;
+            border-radius: 3px;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+        }
+        .pdf-page .ocrLayer .ocr-word:hover {
+            background: rgba(76,175,80,0.14);
+        }
+        .pdf-page .ocrLayer .ocr-word.selected {
+            background: rgba(76,175,80,0.38);
+            box-shadow: 0 0 0 1.5px rgba(76,175,80,0.9);
+        }
+
         /* ---------- empty / loading states ---------- */
         .hint {
             position: absolute; inset: 0;
@@ -245,7 +273,8 @@
                 <div class="big">📖</div>
                 <h2>Open a PDF to start reading</h2>
                 <p>Click <b>Open PDF</b>, or drag &amp; drop a file anywhere on this page.
-                   Select any Arabic word in the text to look it up in the dictionary.</p>
+                   Select any Arabic word in the text — or tap a word on a scanned page —
+                   to look it up in the dictionary.</p>
             </div>
         </div>
 
@@ -370,6 +399,156 @@
         }
         if (results.length) return results;
         return [lookupArabic(base)];       // "not found" presentation
+    }
+
+    /* ==================================================================
+     * OCR WORD OVERLAY (scanned / image-only PDFs)
+     * Word boxes come from data/ocr/<pdf-stem>/pages/*.json, produced
+     * offline by ocr/ocr_pdf.py. The browser never runs OCR — it only
+     * positions transparent tappable regions over the page image and
+     * routes taps through the same dictionary lookup as the text layer.
+     * ================================================================== */
+    const OCR_ROOT = 'data/ocr/';
+    const ocrState = { manifest: null, pages: new Map(), inflight: new Map() };
+
+    function fetchJSON(url) {
+        return fetch(url).then(res => {
+            if (!res.ok) throw new Error('HTTP ' + res.status + ' for ' + url);
+            return res.json();
+        });
+    }
+
+    async function sha256Hex(buffer) {
+        if (!(window.crypto && crypto.subtle)) return null;
+        try {
+            const digest = await crypto.subtle.digest('SHA-256', buffer);
+            return Array.from(new Uint8Array(digest))
+                .map(b => b.toString(16).padStart(2, '0')).join('');
+        } catch (e) { return null; }   // hashing unavailable -> filename match only
+    }
+
+    function resetOCRState() {
+        ocrState.manifest = null;
+        ocrState.pages.clear();
+        ocrState.inflight.clear();
+        clearOCRSelection();
+    }
+
+    function ocrPageURL(pageNo) {
+        const m = ocrState.manifest;
+        const width = m.page_number_width || 3;
+        const stem = String(m.source_pdf || '').replace(/\.pdf$/i, '');
+        const padded = String(pageNo).padStart(width, '0');
+        let file = String(m.page_file_pattern || '');
+        file = file.includes('{page') ? file.replace(/\{page:[^}]+\}/, padded)
+                                      : 'pages/' + padded + '.json';
+        return OCR_ROOT + encodeURIComponent(stem) + '/' + file;
+    }
+
+    function getOCRPage(pageNo) {
+        if (ocrState.pages.has(pageNo)) return Promise.resolve(ocrState.pages.get(pageNo));
+        if (ocrState.inflight.has(pageNo)) return ocrState.inflight.get(pageNo);
+        const p = fetchJSON(ocrPageURL(pageNo))
+            .then(doc => { ocrState.pages.delete(pageNo); ocrState.pages.set(pageNo, doc); return doc; })
+            .catch(err => { ocrState.inflight.delete(pageNo); throw err; });
+        ocrState.inflight.set(pageNo, p);
+        return p;
+    }
+
+    /* Load the OCR manifest for the opened PDF, if one exists. Verifies the
+     * PDF's SHA-256 against the manifest so overlay data from a different
+     * (renamed) PDF is never attached; returns null when there is none. */
+    async function loadOCRManifest(file, pdfBuffer) {
+        const stem = file.name.replace(/\.pdf$/i, '');
+        let manifest;
+        try {
+            manifest = await fetchJSON(OCR_ROOT + encodeURIComponent(stem) + '/manifest.json');
+        } catch (e) { return null; }   // no OCR data for this file — text reader unaffected
+        try {
+            const pdfHash = await sha256Hex(pdfBuffer);
+            if (pdfHash && manifest.pdf_sha256 &&
+                pdfHash.toLowerCase() !== String(manifest.pdf_sha256).toLowerCase()) {
+                console.warn('OCR manifest SHA-256 mismatch for', file.name, '- overlay disabled');
+                return null;
+            }
+        } catch (e) { /* fall back to filename match only */ }
+        ocrState.manifest = manifest;
+        return manifest;
+    }
+
+    function clearOCRSelection() {
+        const prev = document.querySelector('.ocr-word.selected');
+        if (prev) prev.classList.remove('selected');
+    }
+
+    // Same semantics as lookupSelection: exact cleaned text first, then the
+    // normalized form stored by the pipeline. Always returns ALL candidates.
+    function lookupOCRResults(word) {
+        const r = lookupArabic(word.text_clean || word.text || '');
+        if (r.matchType !== 'none') return [r];
+        const key = word.text_normalized;
+        if (key) {
+            const hit = normMap.get(key);
+            if (hit && hit.length) return [{
+                matchType: 'normalized', query: r.query, key,
+                spellingCount: distinctSpellings(hit).length, entries: hit
+            }];
+        }
+        return [r];   // "not found" presentation
+    }
+
+    function onOCRWordClick(word, el) {
+        const results = lookupOCRResults(word);
+        clearOCRSelection();
+        showLookup(results);
+        showPopup(results, el.getBoundingClientRect());
+        el.classList.add('selected');
+    }
+
+    /* Build the transparent word-box layer for a rendered page. Coordinates
+     * in the JSON are page pixels at the OCR render DPI; the page image has
+     * the same aspect ratio as the PDF page, so a simple scale factor maps
+     * them onto the displayed page at the current zoom. */
+    async function attachOCR(pe, i, gen) {
+        if (!ocrState.manifest) return;
+        const pageNo = i + 1;
+        if (pageNo > ocrState.manifest.page_count) return;
+        let pageDoc;
+        try { pageDoc = await getOCRPage(pageNo); }
+        catch (e) { console.warn('OCR page ' + pageNo + ' unavailable:', e); return; }
+        if (pe.gen !== gen) return;    // page was re-rendered while fetching
+        try {
+            const words = pageDoc.words || [];
+            const imgW = pageDoc.image_width, imgH = pageDoc.image_height;
+            const dispW = pe.el.clientWidth, dispH = pe.el.clientHeight;
+            if (!words.length || !imgW || !imgH || !dispW || !dispH) return;
+            const layer = document.createElement('div');
+            layer.className = 'ocrLayer';
+            layer.style.width = dispW + 'px';
+            layer.style.height = dispH + 'px';
+            const sx = dispW / imgW, sy = dispH / imgH;
+            for (const word of words) {
+                const b = word.bbox;
+                if (!b || !(b.width > 0) || !(b.height > 0)) continue;
+                const el = document.createElement('div');
+                el.className = 'ocr-word';
+                el.style.left   = (b.x * sx) + 'px';
+                el.style.top    = (b.y * sy) + 'px';
+                el.style.width  = (b.width  * sx) + 'px';
+                el.style.height = (b.height * sy) + 'px';
+                el.dataset.norm = word.text_normalized || '';
+                el.title = word.text +
+                    (word.confidence != null ? ' (' + Math.round(word.confidence) + '%)' : '') +
+                    (word.text_normalized && word.text_normalized !== word.text_clean
+                        ? ' → ' + word.text_normalized : '');
+                el.addEventListener('click', ev => {
+                    ev.stopPropagation();
+                    onOCRWordClick(word, el);
+                });
+                layer.appendChild(el);
+            }
+            pe.el.appendChild(layer);
+        } catch (e) { console.warn('OCR overlay build failed:', e); }
     }
 
     /* ==================================================================
@@ -500,7 +679,7 @@
      * ================================================================== */
     const popup = document.getElementById('lookupPopup');
 
-    function closePopup() { popup.classList.add('hidden'); }
+    function closePopup() { popup.classList.add('hidden'); clearOCRSelection(); }
 
     function positionPopup(rect) {
         const pw = popup.offsetWidth, ph = popup.offsetHeight;
@@ -707,6 +886,8 @@
             pdfjsLib.renderTextLayer({ textContentSource: text, container: pe.text, viewport: textVp });
             if (pe.gen !== gen) return;
             pe.text.classList.add('ready');
+            await attachOCR(pe, i, gen);      // scanned pages: word boxes over the image
+            if (pe.gen !== gen) return;
             pe.done = true;
             pe.rendering = false;
         } catch (err) {
@@ -722,8 +903,9 @@
         pe.done = false;
         if (pe.task) try { pe.task.cancel(); } catch (e) {}
         pe.task = null;
-        pe.el.querySelectorAll('canvas, .textLayer').forEach(c => {
+        pe.el.querySelectorAll('canvas, .textLayer, .ocrLayer').forEach(c => {
             if (c.tagName === 'CANVAS') c.getContext('2d').clearRect(0, 0, c.width, c.height);
+            else if (c.classList.contains('ocrLayer')) c.remove();
             else c.replaceChildren();
         });
     }
@@ -786,6 +968,7 @@
             return;
         }
         hint.classList.add('hidden');
+        resetOCRState();               // drop overlay state from any previous file
         fileNameEl.textContent = file.name;
         document.title = 'Buhaira Reader — ' + file.name;
         statusEl.textContent = 'Loading…';
@@ -797,6 +980,7 @@
             try { await pdfDoc.destroy(); } catch (e) {}
         }
         const data = await file.arrayBuffer();
+        await loadOCRManifest(file, data);   // offline OCR overlay (no-op without a manifest)
         const task = pdfjsLib.getDocument({ data });
         task.onProgress = function(p) {
             if (p.total) statusEl.textContent = 'Loading… ' + Math.round(p.loaded / p.total * 100) + '%';
@@ -827,7 +1011,8 @@
         pageTotalEl.textContent = '/ ' + pdfDoc.numPages;
         scrollToPage(1);
         syncRender();
-        statusEl.textContent = 'Ready — ' + pdfDoc.numPages + ' page' + (pdfDoc.numPages === 1 ? '' : 's');
+        statusEl.textContent = 'Ready — ' + pdfDoc.numPages + ' page' + (pdfDoc.numPages === 1 ? '' : 's') +
+            (ocrState.manifest ? ' · OCR overlay' : '');
     }
 
     document.getElementById('openBtn').addEventListener('click', () => document.getElementById('fileInput').click());

@@ -6,3 +6,7 @@ __pycache__/
 *.bak
 .DS_Store
 Thumbs.db
+
+# generated OCR datasets + test PDFs (recreate with ocr/make_test_pdf.py +
+# ocr/ocr_pdf.py, or run test_ocr_pipeline.py which does it automatically)
+data/
